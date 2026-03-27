@@ -33,6 +33,10 @@
       "./extensions/LS.ts",
       "./extensions/AskUserQuestion.ts",
       "./extensions/Task.ts",
+      "./extensions/WebFetch.ts",
+      "./extensions/WebSearch.ts",
+      "./extensions/Skill.ts",
+      "./extensions/PlanMode.ts",
       "./extensions/Agent.ts"
     ]
   },

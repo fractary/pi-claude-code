@@ -22,9 +22,18 @@ Claude Code and pi expose different tool sets to the model. If you have agents o
 | `TaskList` | `Task.ts` | CC shim | List all tasks as `Array<{ id, subject, status, metadata }>` |
 | `TaskGet` | `Task.ts` | CC shim | Get full details for one task |
 | `TaskStop` | `Task.ts` | CC shim | Stop/cancel a task |
+| `WebFetch` | `WebFetch.ts` | CC shim | Fetch URL as clean markdown via Jina Reader (no API key needed) |
+| `WebSearch` | `WebSearch.ts` | CC shim | Web search via Brave Search API (requires `BRAVE_API_KEY`) |
+| `Skill` | `Skill.ts` | CC shim | Execute a pi skill by name — loads SKILL.md and returns content |
+| `EnterPlanMode` | `PlanMode.ts` | CC shim | Enter read-only plan mode; restricts tools to safe analysis set |
+| `ExitPlanMode` | `PlanMode.ts` | CC shim | Present plan to user for approval; restores full tools on accept |
 | `Agent` | `Agent.ts` | CC shim | Delegate to a pi agent by name (requires pi-subagents) |
 
-**Slash commands:** `/todos`, `/tasks` — TUI task list viewer
+**Slash commands:** `/todos`, `/tasks` — TUI task list viewer · `/plan` — toggle plan mode
+**Keyboard:** `Ctrl+Alt+P` — toggle plan mode
+
+**Environment variables:**
+- `BRAVE_API_KEY` — required for `WebSearch`. Free tier available at [api-dashboard.search.brave.com](https://api-dashboard.search.brave.com/register)
 
 All task tools (`todo`, `TodoWrite`, `TodoRead`, `Task*`) share the same in-memory state and session persistence, so they all see the same list regardless of which tool created the tasks.
 
@@ -43,6 +52,29 @@ Once published to npm:
 ```bash
 pi install npm:pi-claude-code
 ```
+
+### WebSearch — Brave Search API key
+
+`WebSearch.ts` requires a `BRAVE_API_KEY` environment variable. The tool loads cleanly without it and returns setup instructions on first use. Free tier is sufficient.
+
+```bash
+# Add to ~/.profile or ~/.zprofile
+export BRAVE_API_KEY="your-key-here"
+```
+
+### Skill — name resolution
+
+`Skill.ts` discovers all available pi skills (same locations pi uses at startup) and matches by name. Full match first, then suffix match — `"workflow-run-verifier"` matches `"fractary-faber-workflow-run-verifier"`. The `{baseDir}` placeholder in skill content is resolved to the skill's directory before returning.
+
+### PlanMode — no dependencies
+
+`PlanMode.ts` is self-contained. It embeds the official pi plan-mode example extension and adds `EnterPlanMode`/`ExitPlanMode` tool shims on top. No extra packages needed.
+
+The plan mode tool set (available while in plan mode) includes all read-only tools from this package (`Grep`, `Glob`, `LS`, `WebFetch`, `WebSearch`, `Skill`) plus pi's built-in `read`, `bash` (safe commands only), `grep`, `find`, `ls`.
+
+### WebFetch — no dependencies
+
+`WebFetch.ts` uses [Jina Reader](https://jina.ai/reader/) (`r.jina.ai`) which requires no API key. It converts any public URL to clean markdown automatically.
 
 ### Agent() shim — additional dependency
 
