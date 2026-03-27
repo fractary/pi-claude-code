@@ -10,21 +10,19 @@ Claude Code and pi expose different tool sets to the model. If you have agents o
 
 | Tool | Extension | Type | Description |
 |------|-----------|------|-------------|
-| `Grep` | `filesystem.ts` | CC shim | Pattern search → ripgrep / grep fallback |
-| `Glob` | `filesystem.ts` | CC shim | File pattern matching → rg --files / find fallback |
-| `LS` | `filesystem.ts` | CC shim | Directory listing → ls -la |
-| `AskUserQuestion` | `interaction.ts` | CC shim | Choice picker with free-text fallback |
-| `question` | `interaction.ts` | pi-native | Single question with label+description options |
-| `questionnaire` | `interaction.ts` | pi-native | Multi-question sequential picker |
-| `todo` | `tasks.ts` | pi-native | Native pi task list (add/toggle/list/clear) |
-| `TodoWrite` | `tasks.ts` | CC shim | Replace entire task list atomically |
-| `TodoRead` | `tasks.ts` | CC shim | Read task list in CC JSON format |
-| `TaskCreate` | `tasks.ts` | CC shim | Create task, returns `{ taskId }` |
-| `TaskUpdate` | `tasks.ts` | CC shim | Update task status/subject by taskId |
-| `TaskList` | `tasks.ts` | CC shim | List all tasks as `Array<{ id, subject, status, metadata }>` |
-| `TaskGet` | `tasks.ts` | CC shim | Get full details for one task |
-| `TaskStop` | `tasks.ts` | CC shim | Stop/cancel a task |
-| `Agent` | `agent.ts` | CC shim | Delegate to a pi agent by name (requires pi-subagents) |
+| `Grep` | `Grep.ts` | CC shim | Pattern search → ripgrep / grep fallback |
+| `Glob` | `Glob.ts` | CC shim | File pattern matching → rg --files / find fallback |
+| `LS` | `LS.ts` | CC shim | Directory listing → ls -la |
+| `AskUserQuestion` | `AskUserQuestion.ts` | CC shim | Choice picker with free-text fallback |
+| `todo` | `Task.ts` | pi-native | Native pi task list (add/toggle/list/clear) |
+| `TodoWrite` | `Task.ts` | CC shim | Replace entire task list atomically |
+| `TodoRead` | `Task.ts` | CC shim | Read task list in CC JSON format |
+| `TaskCreate` | `Task.ts` | CC shim | Create task, returns `{ taskId }` |
+| `TaskUpdate` | `Task.ts` | CC shim | Update task status/subject by taskId |
+| `TaskList` | `Task.ts` | CC shim | List all tasks as `Array<{ id, subject, status, metadata }>` |
+| `TaskGet` | `Task.ts` | CC shim | Get full details for one task |
+| `TaskStop` | `Task.ts` | CC shim | Stop/cancel a task |
+| `Agent` | `Agent.ts` | CC shim | Delegate to a pi agent by name (requires pi-subagents) |
 
 **Slash commands:** `/todos`, `/tasks` — TUI task list viewer
 
@@ -60,12 +58,12 @@ If `pi-subagents` is not installed, `agent.ts` still loads cleanly — it just r
 
 Use pi's [package filtering](https://docs.anthropic.com/en/docs/pi/packages#package-filtering) in `settings.json` to load only what you need:
 
-**Exclude the Agent() shim** (if you don't use pi-subagents):
+**Exclude the Agent shim** (if you don't use pi-subagents):
 ```json
 {
   "packages": [{
     "source": "git:github.com/fractary/pi-claude-code",
-    "extensions": ["!extensions/agent.ts"]
+    "extensions": ["!extensions/Agent.ts"]
   }]
 }
 ```
@@ -75,20 +73,31 @@ Use pi's [package filtering](https://docs.anthropic.com/en/docs/pi/packages#pack
 {
   "packages": [{
     "source": "git:github.com/fractary/pi-claude-code",
-    "extensions": ["extensions/tasks.ts"]
+    "extensions": ["extensions/Task.ts"]
   }]
 }
 ```
 
-**Filesystem + interaction tools only** (no task state):
+**Filesystem tools only:**
 ```json
 {
   "packages": [{
     "source": "git:github.com/fractary/pi-claude-code",
     "extensions": [
-      "extensions/filesystem.ts",
-      "extensions/interaction.ts"
+      "extensions/Grep.ts",
+      "extensions/Glob.ts",
+      "extensions/LS.ts"
     ]
+  }]
+}
+```
+
+**Everything except Agent:**
+```json
+{
+  "packages": [{
+    "source": "git:github.com/fractary/pi-claude-code",
+    "extensions": ["!extensions/Agent.ts"]
   }]
 }
 ```
@@ -123,11 +132,12 @@ This package follows [semver](https://semver.org/). New Claude Code tools are ad
 
 PRs welcome. When adding a new Claude Code tool shim:
 
-1. Add it to the appropriate extension file (or create a new one if it's a new logical group)
+1. Create `extensions/ToolName.ts` matching the Claude Code tool name exactly
 2. Match the exact parameter schema from the Claude Code tools reference
-3. Store a full state snapshot in `details{}` for any stateful tools (see `tasks.ts` for the pattern)
-4. Add to the tool table in this README
-5. Bump the minor version in `package.json` and add a CHANGELOG entry
+3. Store a full state snapshot in `details{}` for any stateful tools (see `Task.ts` for the pattern)
+4. Add the new file to the `pi.extensions` array in `package.json`
+5. Add to the tool table in this README
+6. Bump the minor version in `package.json` and add a CHANGELOG entry
 
 ## License
 

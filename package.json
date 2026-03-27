@@ -1,0 +1,53 @@
+{
+  "name": "pi-claude-code",
+  "version": "1.0.0",
+  "description": "Pi extensions that shim Claude Code's tool API, letting agents, skills, and prompts built for Claude Code run in pi without modification.",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-coding-agent",
+    "claude-code",
+    "compatibility",
+    "shim"
+  ],
+  "type": "module",
+  "author": "Fractary",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fractary/pi-claude-code.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fractary/pi-claude-code/issues"
+  },
+  "homepage": "https://github.com/fractary/pi-claude-code#readme",
+  "files": [
+    "extensions/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/Grep.ts",
+      "./extensions/Glob.ts",
+      "./extensions/LS.ts",
+      "./extensions/AskUserQuestion.ts",
+      "./extensions/Task.ts",
+      "./extensions/Agent.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@mariozechner/pi-ai": "*",
+    "@sinclair/typebox": "*"
+  },
+  "peerDependenciesMeta": {
+    "pi-subagents": {
+      "optional": true
+    }
+  },
+  "optionalDependencies": {
+    "pi-subagents": "*"
+  }
+}
