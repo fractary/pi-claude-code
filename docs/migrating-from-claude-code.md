@@ -15,6 +15,48 @@ Claude Code and pi share the same fundamental concepts under different names:
 | `settings.json` | `.pi/settings.json` | Similar structure |
 | `CLAUDE.md` | `AGENTS.md` | Auto-loaded context file |
 
+## Making your existing .claude/ directories work in pi
+
+The fastest way to get your existing `.claude/` assets (agents, skills, commands) loading in pi is to treat your project itself as a local pi package. No copying, no restructuring needed.
+
+**Step 1 — Declare your `.claude/` directories in `package.json`:**
+
+```json
+{
+  "pi": {
+    "skills": [
+      ".claude/skills"
+    ],
+    "prompts": [
+      ".claude/commands"
+    ],
+    "agents": [
+      ".claude/agents"
+    ]
+  }
+}
+```
+
+Only include the keys for directories that exist in your project.
+
+**Step 2 — Tell pi to install the local package on startup (`.pi/settings.json`):**
+
+```json
+{
+  "packages": [
+    ".."
+  ]
+}
+```
+
+The `..` path points from `.pi/` up to your project root where `package.json` lives. On startup pi installs the local package, which registers all the skills, prompts, and agents it declares.
+
+That's it. Your `.claude/` assets are now available to pi without moving a single file.
+
+> **Note — plugin / marketplace projects:** If your project *is* a pi plugin intended to be installed in other projects (rather than just using local assets), the approach is different. You declare plugin folders in `package.json` instead of individual asset directories. See [converting-claude-plugins.md](./converting-claude-plugins.md) for that path.
+
+---
+
 Skills require essentially zero changes — pi implements the [Agent Skills standard](https://agentskills.io/specification) and loads them from the same `SKILL.md` format. You can point pi at your existing Claude Code skill directories and they will just work:
 
 ```json
