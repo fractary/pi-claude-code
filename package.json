@@ -1,6 +1,6 @@
 {
   "name": "@fractary/pi-claude-code",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pi extensions that shim Claude Code's tool API, letting agents, skills, and prompts built for Claude Code run in pi without modification.",
   "keywords": [
     "pi-package",
