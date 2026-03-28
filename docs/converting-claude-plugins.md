@@ -111,7 +111,7 @@ This is exactly the pattern used in the Fractary Forge monorepo, which has a sin
 }
 ```
 
-## Agents — the bridge pattern
+## Agents — `pi.agents` in package.json
 
 Pi itself has no native agents concept. Agent support is provided by the `pi-subagents` extension, which discovers agents from fixed directories:
 
@@ -121,9 +121,62 @@ Pi itself has no native agents concept. Agent support is provided by the `pi-sub
 | Project | Nearest `.pi/agents/` walking up from CWD |
 | Builtin | Inside `pi-subagents` package |
 
-Since there's no `pi.agents` key in `package.json`, there's no direct way to declare agents in a pi package manifest. The solution is to ship a **setup extension** that symlinks your agent files into the user agents directory on session start.
+`@fractary/pi-claude-code`'s `Agent.ts` extension bridges this gap. It reads `pi.agents` from every installed package's `package.json` on session start and symlinks the declared agent files into the appropriate discovery directory. This means you declare agents exactly like skills and prompts — no extension required:
 
-### The setup-agents.ts pattern
+```json
+{
+  "pi": {
+    "agents":  ["./agents"],
+    "skills":  ["./skills"],
+    "prompts": ["./commands"]
+  }
+}
+```
+
+**Scope rules:**
+- Packages in global settings (`~/.pi/agent/settings.json`) → agents land in `~/.pi/agent/agents/` (available everywhere)
+- Packages in project settings (`.pi/settings.json`) → agents land in `.pi/agents/` (this project only)
+
+### Current project's own agents
+
+The current project's `package.json` is also scanned, enabling a common pattern: expose a project's existing `.claude/agents/` to pi without moving any files:
+
+```json
+{
+  "pi": { "agents": [".claude/agents"] }
+}
+```
+
+`Agent.ts` detects this on session start and symlinks the agents into `.pi/agents/` automatically.
+
+### Multi-plugin monorepo
+
+List all agent directories:
+
+```json
+{
+  "pi": {
+    "agents": ["plugins/plugin-a/agents", "plugins/plugin-b/agents"]
+  }
+}
+```
+
+### Option 2: explicit extension (for packages without pi-claude-code)
+
+If you need agents registered even without `@fractary/pi-claude-code` installed — or want custom logic — use one of these approaches:
+
+**Using the exported utility** (if pi-claude-code is available as a dependency):
+```typescript
+// extensions/setup.ts
+import { setupAgents } from "@fractary/pi-claude-code/extensions/Agent.ts";
+export default (pi) => setupAgents(pi, import.meta.url, "../agents");
+```
+
+**Self-contained** (no dependency): copy `extensions/Plugin.ts` from the pi-claude-code repo into your project and adjust `AGENTS_RELATIVE_PATH`. It's a standalone ~60-line extension with no external imports.
+
+### The setup-agents.ts pattern (legacy reference)
+
+> **Prefer `pi.agents` in package.json** — if `@fractary/pi-claude-code` is installed, you don't need this at all. This pattern is documented for reference and for cases where the dependency isn't available.
 
 Create an extension that runs on `session_start` and symlinks your agents into `~/.pi/agent/agents/`:
 
@@ -190,33 +243,7 @@ Add this extension to your `pi.extensions` declaration:
 
 Now when anyone installs your package and starts pi, their `~/.pi/agent/agents/` will contain symlinks to your agents. They'll be discovered by `pi-subagents` as user-scoped agents and available to the `Agent()` tool, chains, and the `/agents` command.
 
-### Why symlinks instead of copies
-
-Symlinks mean updates to your package (via `pi update`) are immediately reflected without re-linking. If a file moves (e.g. after a git pull), the setup extension detects the stale symlink and replaces it. The check `if (!stat.isSymbolicLink()) continue` ensures the extension never overwrites a real file with the same name that the user may have created themselves.
-
-### Multi-plugin monorepo with setup-agents
-
-For a monorepo with multiple plugin directories, you can either write one setup extension per plugin or loop over multiple source directories:
-
-```typescript
-const PLUGIN_DIRS = ["plugin-a/agents", "plugin-b/agents"].map(rel =>
-  path.join(path.dirname(fileURLToPath(import.meta.url)), "..", rel)
-);
-```
-
-### Project-scoped agents (alternative)
-
-If you want agents to only be available when working in a specific project rather than globally, skip the symlink extension and put your agent files in `.pi/agents/` in the project root:
-
-```
-my-project/
-└── .pi/
-    └── agents/
-        ├── my-agent.md
-        └── another-agent.md
-```
-
-`pi-subagents` automatically discovers `.pi/agents/` by walking up from the CWD. These are "project-scoped" agents and only visible when you're inside that project directory. No extension needed.
+Agent.ts handles all of this automatically when you use `pi.agents` in package.json. Symlinks are idempotent, stale links are replaced, and dead links are pruned on every session start.
 
 ## Agent file format for pi-subagents
 
@@ -272,13 +299,11 @@ my-plugin/
 my-plugin/
 ├── agents/
 │   └── my-agent.md            # same file, updated model field
-├── extensions/
-│   └── setup-agents.ts        # new — symlinks agents to ~/.pi/agent/agents/
 ├── skills/
 │   └── my-skill/SKILL.md      # unchanged
 ├── commands/
 │   └── do-thing.md            # unchanged
-└── package.json               # pi section added
+└── package.json               # pi section added — that's it
 ```
 
 `package.json`:
@@ -287,12 +312,14 @@ my-plugin/
   "name": "my-plugin",
   "keywords": ["pi-package"],
   "pi": {
-    "extensions": ["./extensions"],
-    "skills":     ["./skills"],
-    "prompts":    ["./commands"]
+    "agents":  ["./agents"],
+    "skills":  ["./skills"],
+    "prompts": ["./commands"]
   }
 }
 ```
+
+No setup extension needed. `@fractary/pi-claude-code`'s `Agent.ts` handles agent discovery automatically when installed.
 
 `agents/my-agent.md` — only the `model` field needs updating:
 ```yaml
