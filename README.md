@@ -94,7 +94,7 @@ Common patterns:
 
 ## Documentation
 
-- **[Converting Claude Code plugins to pi packages](docs/converting-claude-plugins.md)** — how to add a `pi` section to `package.json`, map skills/commands/extensions, and bridge agents via the setup-agents pattern; covers single plugins and monorepos
+- **[Converting Claude Code plugins to pi packages](docs/converting-claude-plugins.md)** — how to add a `pi` section to `package.json` to map skills, commands, extensions, and agents (`pi.agents` is handled automatically by `Agent.ts`); covers single plugins and monorepos
 - **[Migrating from Claude Code](docs/migrating-from-claude-code.md)** — how to structure agents, skills, and commands so they work in both harnesses; naming conventions and the namespace problem
 - **[Filesystem tools](docs/filesystem-tools.md)** — Grep, Glob, LS vs pi's built-in grep / find / ls; differences and tips
 - **[Task management](docs/task-management.md)** — TodoWrite vs TaskCreate; how shared state works; the /todos and /tasks commands

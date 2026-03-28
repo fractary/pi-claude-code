@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-27
+
+### Added
+
+- `extensions/Agent.ts` — `pi.agents` package scanning: reads `pi.agents` from every installed package's `package.json` on `session_start` and symlinks declared agent `.md` files into the correct pi-subagents discovery directory (`~/.pi/agent/agents/` for user-scope, `.pi/agents/` for project-scope). Also scans the current project's own `package.json`, enabling `.claude/agents/` to be exposed to pi with a single manifest entry.
+- `extensions/Agent.ts` — `setupAgents(pi, importMetaUrl, relativePath?)` named export for packages that need explicit agent registration without `package.json` declarations (Option 2)
+- `extensions/Agent.ts` — `syncAgentsFromDir(sourceDir, targetDir)` named export for low-level agent linking
+- `extensions/Plugin.ts` — self-contained agent setup template (not auto-loaded; copy-and-modify for packages that need zero external dependencies)
+
+### Changed
+
+- `extensions/Agent.ts` — unified both the `Agent()` tool shim and package agent discovery into one extension; the two concerns belong together since both are about making Claude agents work in pi
+- `docs/converting-claude-plugins.md` — updated agents section to document `pi.agents` as the primary mechanism; legacy `setup-agents.ts` pattern replaced by `Plugin.ts` reference
+- `forge/package.json` — migrated from `setup-agents.ts` extension to `"pi": { "agents": ["plugins/forge/agents"] }`
+
 ## [1.0.0] - 2026-03-27
 
 ### Added

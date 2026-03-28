@@ -135,5 +135,6 @@ When moving an agent/skill/command from Claude Code to pi:
 - [ ] Commands/agents that reference other agents/skills: replace `plugin:name` syntax with `plugin-name`
 - [ ] Model names: update to `provider/model` format if explicitly set in frontmatter
 - [ ] `CLAUDE.md`: copy/rename to `AGENTS.md` for pi's auto-loading
-- [ ] Install `@fractary/pi-claude-code` so the tool shims are available: `pi install npm:@fractary/pi-claude-code`
+- [ ] Install `@fractary/pi-claude-code`: `pi install npm:@fractary/pi-claude-code` — this provides tool shims AND automatic `pi.agents` discovery
+- [ ] Add `"pi": { "agents": ["./path/to/agents"] }` to each plugin's `package.json` so agents are discovered when the package is installed
 - [ ] Install `pi-subagents` if you use `Agent(...)` delegation

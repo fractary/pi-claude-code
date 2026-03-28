@@ -2,7 +2,7 @@
 
 A Claude Code plugin is a directory with agents, skills, commands, and optionally extensions. Pi has an equivalent package system — you declare what a package contains in the `pi` section of `package.json`, and pi loads the declared resources automatically when the package is installed.
 
-The conversion is mostly a matter of adding the right `pi` section to your `package.json` and pointing it at your existing directories. Skills and commands (prompts) map directly with no file changes required. Agents need a small bridge because pi itself doesn't have a native agent concept — that comes from the `pi-subagents` extension.
+The conversion is mostly a matter of adding the right `pi` section to your `package.json` and pointing it at your existing directories. Skills, commands (prompts), and agents all map directly — no file changes required and no boilerplate extensions needed. `@fractary/pi-claude-code`'s `Agent.ts` extension handles agent discovery automatically via a `pi.agents` key that works just like `pi.skills` and `pi.prompts`.
 
 ## The `pi` section in `package.json`
 
@@ -161,9 +161,9 @@ List all agent directories:
 }
 ```
 
-### Option 2: explicit extension (for packages without pi-claude-code)
+### Option 2: explicit extension (without pi-claude-code dependency)
 
-If you need agents registered even without `@fractary/pi-claude-code` installed — or want custom logic — use one of these approaches:
+If you need agents registered even when `@fractary/pi-claude-code` isn't installed — or want custom logic — use one of:
 
 **Using the exported utility** (if pi-claude-code is available as a dependency):
 ```typescript
@@ -172,78 +172,20 @@ import { setupAgents } from "@fractary/pi-claude-code/extensions/Agent.ts";
 export default (pi) => setupAgents(pi, import.meta.url, "../agents");
 ```
 
-**Self-contained** (no dependency): copy `extensions/Plugin.ts` from the pi-claude-code repo into your project and adjust `AGENTS_RELATIVE_PATH`. It's a standalone ~60-line extension with no external imports.
-
-### The setup-agents.ts pattern (legacy reference)
-
-> **Prefer `pi.agents` in package.json** — if `@fractary/pi-claude-code` is installed, you don't need this at all. This pattern is documented for reference and for cases where the dependency isn't available.
-
-Create an extension that runs on `session_start` and symlinks your agents into `~/.pi/agent/agents/`:
-
-```typescript
-// extensions/setup-agents.ts
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const AGENTS_SOURCE_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "agents"   // adjust to your agents directory relative to this extension file
-);
-
-const AGENTS_TARGET_DIR = path.join(os.homedir(), ".pi", "agent", "agents");
-
-export default function (pi: ExtensionAPI) {
-  pi.on("session_start", async (_event, ctx) => {
-    try {
-      fs.mkdirSync(AGENTS_TARGET_DIR, { recursive: true });
-      if (!fs.existsSync(AGENTS_SOURCE_DIR)) return;
-
-      const agentFiles = fs.readdirSync(AGENTS_SOURCE_DIR, { withFileTypes: true })
-        .filter(e => e.name.endsWith(".md") && (e.isFile() || e.isSymbolicLink()));
-
-      let linked = 0;
-      for (const entry of agentFiles) {
-        const src = path.join(AGENTS_SOURCE_DIR, entry.name);
-        const dst = path.join(AGENTS_TARGET_DIR, entry.name);
-
-        if (fs.existsSync(dst)) {
-          const stat = fs.lstatSync(dst);
-          if (stat.isSymbolicLink() && fs.readlinkSync(dst) === src) continue; // already correct
-          if (!stat.isSymbolicLink()) continue; // real file — don't touch
-          fs.unlinkSync(dst); // stale symlink — replace
-        }
-
-        fs.symlinkSync(src, dst);
-        linked++;
-      }
-
-      if (linked > 0) ctx.ui.notify(`Linked ${linked} agent(s)`, "info");
-    } catch (err) {
-      ctx.ui.notify(`Failed to link agents: ${(err as Error).message}`, "warning");
-    }
-  });
-}
-```
-
-Add this extension to your `pi.extensions` declaration:
+**Self-contained** (zero dependency): copy `extensions/Plugin.ts` from the pi-claude-code repo into your project and adjust `AGENTS_RELATIVE_PATH` at the top of the file. Then declare it in `pi.extensions`:
 
 ```json
 {
   "pi": {
-    "extensions": ["./extensions/setup-agents.ts", "./extensions"],
+    "extensions": ["./extensions/Plugin.ts"],
+    "agents":     ["./agents"],
     "skills":     ["./skills"],
     "prompts":    ["./commands"]
   }
 }
 ```
 
-Now when anyone installs your package and starts pi, their `~/.pi/agent/agents/` will contain symlinks to your agents. They'll be discovered by `pi-subagents` as user-scoped agents and available to the `Agent()` tool, chains, and the `/agents` command.
-
-Agent.ts handles all of this automatically when you use `pi.agents` in package.json. Symlinks are idempotent, stale links are replaced, and dead links are pruned on every session start.
+`pi.agents` (handled by pi-claude-code) and the explicit extension are idempotent and coexist safely — using both causes no harm.
 
 ## Agent file format for pi-subagents
 
