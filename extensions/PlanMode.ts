@@ -22,7 +22,7 @@
  *   A widget shows live step progress in the TUI footer.
  *
  * Tool sets:
- *   Plan mode:   read, bash(read-only), grep, find, ls, Grep, Glob, LS,
+ *   Plan mode:   read, bash(read-only), find, Grep, Glob, LS,
  *                AskUserQuestion, WebFetch, WebSearch
  *   Normal mode: read, bash, edit, write (pi defaults)
  *
@@ -283,7 +283,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					type: "text",
 					text:
 						"Plan mode activated.\n\n" +
-						"Available tools (read-only): read, bash (safe commands only), grep, find, ls, Grep, Glob, LS, WebFetch, WebSearch, Skill.\n\n" +
+						"Available tools (read-only): read, bash (safe commands only), find, Grep, Glob, LS, AskUserQuestion, WebFetch, WebSearch.\n\n" +
 						"Analyze the codebase thoroughly. When you have a complete plan, call ExitPlanMode with your proposed plan for user approval.",
 				}],
 			};
@@ -482,7 +482,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					customType: "plan-mode-context",
 					content:
 						"[PLAN MODE ACTIVE]\n" +
-						"You are in read-only plan mode. You may use read, bash (safe commands only), grep, find, ls, Grep, Glob, LS, WebFetch, WebSearch, and Skill.\n" +
+						"You are in read-only plan mode. You may use read, bash (safe commands only), find, Grep, Glob, LS, AskUserQuestion, WebFetch, WebSearch.\n" +
 						"You CANNOT use edit or write.\n\n" +
 						"Analyze the codebase thoroughly, then present a detailed numbered plan under a 'Plan:' header:\n\n" +
 						"Plan:\n1. First step\n2. Second step\n...\n\n" +
