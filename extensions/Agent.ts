@@ -503,9 +503,16 @@ function resolveAgentByName(description: string, agents: any[]): string | null {
 	const exact = agents.find((a) => a.name === description || a.name === normalised);
 	if (exact) return exact.name;
 
-	// 2. Substring match (e.g. "forge-skill" matches "fractary-forge-skill-creator")
-	const partial = agents.find((a) => a.name.includes(normalised) || normalised.includes(a.name));
-	if (partial) return partial.name;
+	// 2. Substring match — but only when the description looks like a short keyword,
+	// not when it already looks like a full kebab-case agent name.
+	// Guard: if normalised contains >= 3 segments (e.g. "fractary-faber-workflow-planner"),
+	// it is almost certainly an exact name that simply wasn't found — don't fall back
+	// to a shorter partial match like "planner", which would silently run the wrong agent.
+	const segments = normalised.split("-").filter(Boolean).length;
+	if (segments < 3) {
+		const partial = agents.find((a) => a.name.includes(normalised) || normalised.includes(a.name));
+		if (partial) return partial.name;
+	}
 
 	return null;
 }
