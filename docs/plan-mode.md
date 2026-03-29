@@ -96,18 +96,17 @@ The following tools are available when plan mode is active:
 |------|--------|
 | `read` | Pi built-in |
 | `bash` | Pi built-in (safe commands only — see below) |
-| `grep` | Pi built-in |
 | `find` | Pi built-in |
-| `ls` | Pi built-in |
 | `Grep` | pi-claude-code shim |
 | `Glob` | pi-claude-code shim |
 | `LS` | pi-claude-code shim |
 | `AskUserQuestion` | pi-claude-code shim |
 | `WebFetch` | pi-claude-code shim |
 | `WebSearch` | pi-claude-code shim |
-| `Skill` | pi-claude-code shim |
 
-`edit` and `write` are not available.
+`edit`, `write`, and `Skill` are not available.
+
+> **Note:** `grep` and `ls` (lowercase pi built-ins) are intentionally excluded even though they are functionally covered by `Grep` and `LS`. Under Anthropic OAuth authentication, pi normalizes lowercase built-in names to Claude Code casing (`grep` → `Grep`) before sending to the API. Having both would produce duplicate tool names and cause a `400 tools: Tool names must be unique` error.
 
 ### Safe bash commands in plan mode
 

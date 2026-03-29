@@ -22,7 +22,7 @@
  *   A widget shows live step progress in the TUI footer.
  *
  * Tool sets:
- *   Plan mode:   read, bash(read-only), grep, find, ls, Grep, Glob, LS,
+ *   Plan mode:   read, bash(read-only), find, Grep, Glob, LS,
  *                AskUserQuestion, WebFetch, WebSearch
  *   Normal mode: read, bash, edit, write (pi defaults)
  *
@@ -41,15 +41,37 @@ import { Type } from "@sinclair/typebox";
 // ─── Plan mode tool sets ──────────────────────────────────────────────────────
 
 // Read-only tools available in plan mode (pi built-ins + pi-claude-code shims)
+// NOTE: Do NOT include both a lowercase pi built-in and its CC-cased shim equivalent.
+// Under Anthropic OAuth, pi's anthropic.js provider normalizes lowercase built-in
+// names to CC canonical casing (e.g. grep → Grep), causing duplicates at the API
+// level when the CC-shim extension is also present. Use CC-shims where available.
 const PLAN_MODE_TOOLS = [
-	"read", "bash", "grep", "find", "ls",
-	"Grep", "Glob", "LS",
+	"read", "bash", "find",      // pi built-ins (no CC-shim equivalent)
+	"Grep", "Glob", "LS",        // CC-shims (cover grep, ls; avoid lowercase duplicates)
 	"AskUserQuestion", "WebFetch", "WebSearch",
-	"Skill",
 ];
 
-// Full tool set restored after plan approval
-const NORMAL_MODE_TOOLS = ["read", "bash", "edit", "write"];
+// Full tool set restored after plan approval.
+// All pi built-ins + all CC-shims + pi-subagents tools.
+// IMPORTANT: Do NOT include both a lowercase built-in and its CC-shim equivalent —
+// under Anthropic OAuth, toClaudeCodeName() renames lowercase built-ins to CC casing
+// (e.g. grep → Grep), producing duplicates at the API level.
+// Rule: where a CC-shim exists (Grep, LS), omit the lowercase built-in (grep, ls).
+const NORMAL_MODE_TOOLS = [
+	// pi built-ins (only those without a CC-shim equivalent)
+	"read", "bash", "edit", "write", "find",
+	// CC-shims from @fractary/pi-claude-code (cover grep/ls without lowercase clash)
+	"Grep", "Glob", "LS",
+	"AskUserQuestion",
+	"WebFetch", "WebSearch",
+	"Skill",
+	"Agent",
+	"todo", "TodoWrite", "TodoRead",
+	"TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "TaskStop",
+	"EnterPlanMode", "ExitPlanMode",
+	// pi-subagents built-in tools
+	"subagent", "subagent_status",
+];
 
 // ─── Utils (inlined from plan-mode example utils.ts) ─────────────────────────
 
@@ -261,7 +283,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					type: "text",
 					text:
 						"Plan mode activated.\n\n" +
-						"Available tools (read-only): read, bash (safe commands only), grep, find, ls, Grep, Glob, LS, WebFetch, WebSearch, Skill.\n\n" +
+						"Available tools (read-only): read, bash (safe commands only), find, Grep, Glob, LS, AskUserQuestion, WebFetch, WebSearch.\n\n" +
 						"Analyze the codebase thoroughly. When you have a complete plan, call ExitPlanMode with your proposed plan for user approval.",
 				}],
 			};
@@ -460,7 +482,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 					customType: "plan-mode-context",
 					content:
 						"[PLAN MODE ACTIVE]\n" +
-						"You are in read-only plan mode. You may use read, bash (safe commands only), grep, find, ls, Grep, Glob, LS, WebFetch, WebSearch, and Skill.\n" +
+						"You are in read-only plan mode. You may use read, bash (safe commands only), find, Grep, Glob, LS, AskUserQuestion, WebFetch, WebSearch.\n" +
 						"You CANNOT use edit or write.\n\n" +
 						"Analyze the codebase thoroughly, then present a detailed numbered plan under a 'Plan:' header:\n\n" +
 						"Plan:\n1. First step\n2. Second step\n...\n\n" +
