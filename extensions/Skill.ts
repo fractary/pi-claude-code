@@ -5,9 +5,10 @@
  * allowing Claude Code agents and skills to run in pi without modification.
  *
  * Implementation:
- *   Uses pi's loadSkills() to discover all available skills, then reads the
- *   SKILL.md content and returns it so the model can follow the instructions —
- *   identical to what pi's system prompt guides the model to do with `read`.
+ *   Parses the session system prompt's <available_skills> block (built by pi's
+ *   package manager at startup) to discover all available skills. This is the
+ *   authoritative post-resolution skill registry — the same list already injected
+ *   into context — so it correctly includes skills from all installed packages.
  *
  *   {baseDir} placeholders in skill content are resolved to the skill's
  *   actual directory path before returning, matching pi's own convention.
@@ -23,11 +24,11 @@
  *   https://docs.anthropic.com/en/docs/claude-code/tools-reference
  */
 
-import { loadSkills, type Skill } from "@mariozechner/pi-coding-agent";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { readFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 const SkillParams = Type.Object({
 	name: Type.String({
@@ -45,29 +46,47 @@ interface SkillDetails {
 	error?: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Skill map (populated from system prompt at session_start) ────────────────
 
-/** Find best-matching skill: exact → suffix/contains */
-function resolveSkill(name: string, skills: Skill[]): Skill | null {
-	if (skills.length === 0) return null;
+interface SkillEntry {
+	name: string;
+	filePath: string;
+	baseDir: string;
+}
 
+/** Parse the <available_skills> block from the system prompt into name→entry map. */
+function parseSkillsFromSystemPrompt(systemPrompt: string): Map<string, SkillEntry> {
+	const map = new Map<string, SkillEntry>();
+	const skillPattern = /<skill>\s*<name>([^<]+)<\/name>\s*<description>[^<]*<\/description>\s*<location>([^<]+)<\/location>\s*<\/skill>/gs;
+	for (const m of systemPrompt.matchAll(skillPattern)) {
+		const name = m[1].trim();
+		const filePath = m[2].trim();
+		map.set(name, { name, filePath, baseDir: dirname(filePath) });
+	}
+	return map;
+}
+
+/** Find best-matching skill: exact → suffix → contains. */
+function resolveFromMap(name: string, map: Map<string, SkillEntry>): SkillEntry | null {
 	// 1. Exact match
-	const exact = skills.find((s) => s.name === name);
+	const exact = map.get(name);
 	if (exact) return exact;
 
-	// 2. Suffix match — "workflow-run-verifier" matches "fractary-faber-workflow-run-verifier"
-	const suffix = skills.find((s) => s.name.endsWith(`-${name}`) || s.name.endsWith(name));
-	if (suffix) return suffix;
+	// 2. Suffix match — "workflow-runner" matches "fractary-faber-workflow-runner"
+	for (const [k, v] of map) {
+		if (k.endsWith(`-${name}`) || k.endsWith(name)) return v;
+	}
 
 	// 3. Contains match
-	const contains = skills.find((s) => s.name.includes(name) || name.includes(s.name));
-	if (contains) return contains;
+	for (const [k, v] of map) {
+		if (k.includes(name) || name.includes(k)) return v;
+	}
 
 	return null;
 }
 
-/** Substitute {baseDir} and {name} placeholders in skill content */
-function resolveSkillContent(content: string, skill: Skill): string {
+/** Substitute {baseDir} and {name} placeholders in skill content. */
+function resolveSkillContent(content: string, skill: SkillEntry): string {
 	return content
 		.replace(/\{baseDir\}/g, skill.baseDir)
 		.replace(/\{name\}/g, skill.name);
@@ -76,6 +95,15 @@ function resolveSkillContent(content: string, skill: Skill): string {
 // ─── Extension ───────────────────────────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
+	// Skill map populated once per session from the already-resolved system prompt.
+	// This avoids re-running package manager discovery and correctly reflects all
+	// skills contributed by installed packages and project manifests.
+	let skillMap = new Map<string, SkillEntry>();
+
+	pi.on("session_start", (_event, ctx) => {
+		skillMap = parseSkillsFromSystemPrompt(ctx.getSystemPrompt());
+	});
+
 	pi.registerTool({
 		name: "Skill",
 		label: "Skill",
@@ -85,13 +113,16 @@ export default function (pi: ExtensionAPI) {
 		parameters: SkillParams,
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			// Discover all available skills in the current session context
-			const { skills } = loadSkills({ cwd: ctx.cwd });
+			// Ensure map is populated (handles edge case where session_start
+			// hasn't fired yet, e.g. first tool call in a new session)
+			if (skillMap.size === 0) {
+				skillMap = parseSkillsFromSystemPrompt(ctx.getSystemPrompt());
+			}
 
-			const skill = resolveSkill(params.name, skills);
+			const skill = resolveFromMap(params.name, skillMap);
 
 			if (!skill) {
-				const available = skills.map((s) => `  • ${s.name}`).join("\n") || "  (none found)";
+				const available = [...skillMap.keys()].map((k) => `  • ${k}`).join("\n") || "  (none found)";
 				return {
 					content: [{
 						type: "text",
